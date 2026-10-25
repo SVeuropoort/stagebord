@@ -330,6 +330,7 @@ function fmtDate(iso){ if(!iso) return "—"; const d=new Date(iso+"T12:00:00");
 function hours(van,tot){ if(!van||!tot) return 0; const [a,b]=van.split(":").map(Number), [c,e]=tot.split(":").map(Number); return Math.max(0,((c*60+e)-(a*60+b))/60); }
 function nowStamp(){ const d=new Date(); return d.toISOString(); }
 function fmtStamp(s){ const d=new Date(s); return `${d.getDate()} ${MAANDEN[d.getMonth()].slice(0,3)} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
+function sess(k,v){ try{ if(v===undefined) return sessionStorage.getItem(k); sessionStorage.setItem(k,v);}catch(e){ return null; } }
 function store(k,v){ try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k,v);}catch(e){ return null; } }
 function toast(msg){ const r=$("#toastRoot"); r.innerHTML=`<div class="toast" role="status">${esc(msg)}</div>`; clearTimeout(toast.t); toast.t=setTimeout(()=>r.innerHTML="",2600); }
 
@@ -393,6 +394,8 @@ async function laad(){
   S.instellingen=(rij("speltakken")&&rij("speltakken").takken)||{};
   S.alg={coordNaam:"Selina", ...((rij("algemeen")&&rij("algemeen").takken)||{})};
   zetTakken(S.alg.lijst);
+  if(S.rol==="coord" && sess("stagebord.pin")!==PIN()){ S.rol="kijker"; store("stagebord.rol","kijker"); }
+  if(S.rol==="coordU" && sess("stagebord.pinU")!==PIN_U()){ S.rol="kijker"; store("stagebord.rol","kijker"); }
   S.ready=true; $("#status").hidden=true; render();
 }
 let laadTimer=null;
@@ -887,8 +890,8 @@ function availForm(k){
 let naPin=null;
 function pinForm(dan){
   naPin=dan||null;
-  openModal(`<h2>Stagecoördinator</h2><p class="small muted">Deze rol is voor ${esc(C())}. Vul de pincode in.</p><div class="field"><label for="p-pin">Pincode</label><input type="text" inputmode="numeric" id="p-pin" name="pin" autocomplete="off"></div>${footer("Doorgaan")}`,
-    async fd=>{ if((fd.get("pin")||"")!==PIN()) return "Onjuiste pincode."; store("stagebord.pin",PIN()); S.rol="coord"; store("stagebord.rol","coord"); S.mod="stage"; store("stagebord.mod","stage"); S.tab="overzicht"; render(); if(naPin){ const f=naPin; naPin=null; setTimeout(f,50); } return true; });
+  openModal(`<h2>Stagecoördinator</h2><p class="small muted">Deze rol is voor ${esc(C())}. Vul de pincode in.</p><div class="field"><label for="p-pin">Pincode</label><input type="password" inputmode="numeric" id="p-pin" name="pin" autocomplete="off"></div>${footer("Doorgaan")}`,
+    async fd=>{ if((fd.get("pin")||"")!==PIN()) return "Onjuiste pincode."; sess("stagebord.pin",PIN()); S.rol="coord"; store("stagebord.rol","coord"); S.mod="stage"; store("stagebord.mod","stage"); S.tab="overzicht"; render(); if(naPin){ const f=naPin; naPin=null; setTimeout(()=>f(true),50); } return true; });
 }
 
 function zeker(btn, txt){
@@ -897,8 +900,12 @@ function zeker(btn, txt){
   setTimeout(()=>{ if(btn.isConnected){ btn.dataset.sure=""; btn.textContent=btn.dataset.orig; } },4000);
   return false;
 }
-function openSettings(){
-  if(!isCoord() && !isCoordU()){ return pinForm(openSettings); }
+function gearPin(){
+  openModal(`<h2>Instellingen</h2><p class="small muted">Vul de code van de stagecoördinator of van het uitzendbureau in.</p><div class="field"><label for="g-pin">Code</label><input type="password" inputmode="numeric" id="g-pin" name="pin" autocomplete="off"></div>${footer("Openen")}`,
+    async fd=>{ const c=(fd.get("pin")||""); if(c!==PIN() && c!==PIN_U()) return "Onjuiste code."; setTimeout(()=>openSettings(true),50); return true; });
+}
+function openSettings(ok){
+  if(ok!==true){ return gearPin(); }
   const t=todayISO();
   const weg=S.allS.filter(s=>["geannuleerd","afgewezen"].includes(s.status));
   const inactief=S.allK.filter(k=>k.actief===false);
@@ -954,7 +961,7 @@ function openSettings(){
       const upin=(fd.get("upin")||"").trim(); if(upin && upin.length<4) return "Kies voor het uitzendbureau een pincode van minstens 4 tekens.";
       if(upin) alg.uPincode=upin;
       const ok=await write(()=>api.setAlg(alg),"Instellingen opgeslagen");
-      if(ok){ S.alg=alg; zetTakken(lijst); if(pin) store("stagebord.pin",pin); if(upin) store("stagebord.pinU",upin); render(); }
+      if(ok){ S.alg=alg; zetTakken(lijst); if(pin) sess("stagebord.pin",pin); if(upin) sess("stagebord.pinU",upin); render(); }
       return ok;
     });
   form.querySelector("#c-weg")?.addEventListener("click",async e=>{ if(!zeker(e.currentTarget)) return;
@@ -1208,8 +1215,8 @@ function vrijwForm(k){
 let naPinU=null;
 function pinFormU(dan){
   naPinU=dan||null;
-  openModal(`<h2>Coördinator uitzendbureau</h2><p class="small muted">Deze rol is voor ${esc(CU())}. Vul de pincode in.</p><div class="field"><label for="pu-pin">Pincode</label><input type="text" inputmode="numeric" id="pu-pin" name="pin" autocomplete="off"></div>${footer("Doorgaan")}`,
-    async fd=>{ if((fd.get("pin")||"")!==PIN_U()) return "Onjuiste pincode."; store("stagebord.pinU",PIN_U()); S.rol="coordU"; store("stagebord.rol","coordU"); S.mod="uitzend"; store("stagebord.mod","uitzend"); S.utab="overzicht"; render(); if(naPinU){ const f=naPinU; naPinU=null; setTimeout(f,50);} return true; });
+  openModal(`<h2>Coördinator uitzendbureau</h2><p class="small muted">Deze rol is voor ${esc(CU())}. Vul de pincode in.</p><div class="field"><label for="pu-pin">Pincode</label><input type="password" inputmode="numeric" id="pu-pin" name="pin" autocomplete="off"></div>${footer("Doorgaan")}`,
+    async fd=>{ if((fd.get("pin")||"")!==PIN_U()) return "Onjuiste pincode."; sess("stagebord.pinU",PIN_U()); S.rol="coordU"; store("stagebord.rol","coordU"); S.mod="uitzend"; store("stagebord.mod","uitzend"); S.utab="overzicht"; render(); if(naPinU){ const f=naPinU; naPinU=null; setTimeout(()=>f(true),50);} return true; });
 }
 function uitzendClick(act,id,a){
   const s=S.inzet.find(x=>x.id===id);
@@ -1272,8 +1279,8 @@ document.addEventListener("click", async e=>{
 document.addEventListener("change", e=>{
   if(e.target.id==="rolSelect"){
     const nieuw=e.target.value;
-    if(nieuw==="coord" && store("stagebord.pin")!==PIN()){ e.target.value=S.rol; return pinForm(); }
-    if(nieuw==="coordU" && store("stagebord.pinU")!==PIN_U()){ e.target.value=S.rol; return pinFormU(); }
+    if(nieuw==="coord" && sess("stagebord.pin")!==PIN()){ e.target.value=S.rol; return pinForm(); }
+    if(nieuw==="coordU" && sess("stagebord.pinU")!==PIN_U()){ e.target.value=S.rol; return pinFormU(); }
     S.rol=nieuw; store("stagebord.rol",S.rol);
     if(nieuw==="coord"||nieuw.startsWith("explorer:")) S.mod="stage";
     if(nieuw==="coordU"||nieuw.startsWith("vrijw:")) S.mod="uitzend";
