@@ -1,0 +1,842 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Explorer Stagebord</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Layout: één kolom-app met tabbalk; kaarten per stage als "insigne-strook" met speltakkleur links. */
+:root{
+  --bg:#f3f1ec; --surface:#fffdf9; --sunk:#e9e5dc; --line:#d6d0c3;
+  --fg:#22201b; --muted:#6b6558;
+  --brique:#9b2d20; --brique-ink:#fff; --brique-soft:#f4dfd9;
+  --pine:#2f5d46; --pine-soft:#dbe9e0;
+  --sea:#1f5a85; --sea-soft:#d9e6f1;
+  --sand:#8a6a2e; --sand-soft:#f1e6cd;
+  --warn:#9a5b00; --warn-soft:#fbeccc;
+  --ok:#2f6b3a; --ok-soft:#dcefdc;
+  --bad:#a1302a; --bad-soft:#f6dcda;
+  --f-display:"Zilla Slab", Rockwell, "Roboto Slab", Georgia, serif;
+  --f-body:"Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#181714; --surface:#22201c; --sunk:#2b2924; --line:#3b3831;
+  --fg:#ece8df; --muted:#a59f92;
+  --brique:#e0735f; --brique-ink:#1a0e0b; --brique-soft:#3d221c;
+  --pine:#7fbf9c; --pine-soft:#1f3329;
+  --sea:#7db3dd; --sea-soft:#1a2c3b;
+  --sand:#d4b06a; --sand-soft:#352c1a;
+  --warn:#e8b25a; --warn-soft:#3a2c14;
+  --ok:#86c98f; --ok-soft:#1d321f;
+  --bad:#ec8b83; --bad-soft:#3c1f1d;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#181714; --surface:#22201c; --sunk:#2b2924; --line:#3b3831;
+  --fg:#ece8df; --muted:#a59f92;
+  --brique:#e0735f; --brique-ink:#1a0e0b; --brique-soft:#3d221c;
+  --pine:#7fbf9c; --pine-soft:#1f3329;
+  --sea:#7db3dd; --sea-soft:#1a2c3b;
+  --sand:#d4b06a; --sand-soft:#352c1a;
+  --warn:#e8b25a; --warn-soft:#3a2c14;
+  --ok:#86c98f; --ok-soft:#1d321f;
+  --bad:#ec8b83; --bad-soft:#3c1f1d;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:0 48px}
+.wrap{max-width:980px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(1.6rem,4vw,2.2rem)}
+h2{font-size:1.35rem}
+h3{font-size:1.08rem}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brique);outline-offset:2px}
+
+header.top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between;padding-block:22px 14px}
+.brand{display:flex;gap:14px;align-items:center;min-width:0}
+.knot{flex:none;width:46px;height:46px;border-radius:50%;background:var(--brique);display:grid;place-items:center}
+.knot svg{width:30px;height:30px}
+.brand small{display:block;color:var(--muted);font-size:.82rem;letter-spacing:.06em;text-transform:uppercase}
+.role{display:flex;flex-direction:column;gap:4px;min-width:0}
+.role label{font-size:.75rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.role select{min-width:0;max-width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface)}
+
+nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:18px;scrollbar-width:none}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+nav.tabs button{flex:none;border:0;background:none;padding:10px 12px;border-bottom:3px solid transparent;cursor:pointer;color:var(--muted);font-weight:700}
+nav.tabs button[aria-selected="true"]{color:var(--fg);border-color:var(--brique)}
+nav.tabs .count{display:inline-block;min-width:20px;padding:0 6px;margin-left:4px;border-radius:10px;background:var(--brique);color:var(--brique-ink);font-size:.75rem;text-align:center}
+
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.stack{display:flex;flex-direction:column;gap:12px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:14px}
+.muted{color:var(--muted)}
+.small{font-size:.86rem}
+.eyebrow{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+
+.btn{border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:700}
+.btn:hover{border-color:var(--fg)}
+.btn.primary{background:var(--brique);color:var(--brique-ink);border-color:var(--brique)}
+.btn.ghost{background:none}
+.btn.danger{color:var(--bad)}
+.btn.sm{padding:5px 10px;font-size:.86rem}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+
+.notice{padding:12px 14px;border-radius:var(--r);background:var(--sand-soft);border:1px solid var(--line)}
+.notice.warn{background:var(--warn-soft)}
+.notice strong{font-family:var(--f-display)}
+
+.section{display:flex;flex-direction:column;gap:12px;margin-bottom:28px}
+.section-head{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;justify-content:space-between}
+
+/* Stage card */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);display:grid;grid-template-columns:6px 1fr;overflow:hidden}
+.card .strip{background:var(--tak,var(--line))}
+.card .body{padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.card .meta{display:flex;flex-wrap:wrap;gap:6px 14px;color:var(--muted);font-size:.88rem}
+.date{font-variant-numeric:tabular-nums;font-weight:700;color:var(--fg)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:20px;font-size:.78rem;font-weight:700;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.s-gevraagd{background:var(--sand-soft);color:var(--sand)}
+.s-geclaimd,.s-voorgesteld{background:var(--warn-soft);color:var(--warn)}
+.s-bevestigd{background:var(--sea-soft);color:var(--sea)}
+.s-afgerond{background:var(--ok-soft);color:var(--ok)}
+.s-geannuleerd,.s-afgewezen{background:var(--sunk);color:var(--muted)}
+.tag{display:inline-block;padding:1px 8px;border-radius:6px;background:var(--sunk);font-size:.78rem}
+.tag.exc{background:var(--bad-soft);color:var(--bad);font-weight:700}
+.card .why{font-size:.93rem}
+.card .actions{display:flex;flex-wrap:wrap;gap:8px}
+.log{border-top:1px dashed var(--line);padding-top:8px;font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+
+.empty{padding:22px;border:1px dashed var(--line);border-radius:var(--r);color:var(--muted);text-align:center}
+
+/* Explorer cards */
+.xcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.xhead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.badge{font-size:.74rem;font-weight:700;padding:2px 8px;border-radius:6px}
+.b-rsa{background:var(--brique-soft);color:var(--brique)}
+.b-wv{background:var(--sea-soft);color:var(--sea)}
+.bar{height:8px;border-radius:4px;background:var(--sunk);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--pine)}
+.avail{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:6px;border:1px solid var(--line);font-size:.84rem;font-variant-numeric:tabular-nums;background:var(--bg)}
+.chip button{border:0;background:none;cursor:pointer;color:var(--muted);padding:0 2px}
+.chip.claim{border-color:var(--pine);color:var(--pine);cursor:pointer;font-weight:700}
+
+/* Agenda */
+.filters{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.filters button{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:4px 12px;cursor:pointer;font-size:.86rem}
+.filters button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.month{font-family:var(--f-display);font-size:1.15rem;padding-top:6px;border-top:2px solid var(--fg)}
+.daygroup{display:grid;grid-template-columns:58px 1fr;gap:12px}
+.daybox{text-align:center;border:1px solid var(--line);border-radius:8px;padding:6px 0;background:var(--surface);height:fit-content}
+.daybox b{display:block;font-family:var(--f-display);font-size:1.5rem;line-height:1}
+.daybox span{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.daygroup .stack{min-width:0}
+
+/* Speltak table */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:620px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.74rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+td input{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle}
+
+/* Guide */
+.ladder{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:10px}
+.rung{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:6px}
+.rung .n{font-family:var(--f-display);font-size:1.6rem;color:var(--brique);line-height:1}
+.prose{max-width:68ch;display:flex;flex-direction:column;gap:10px}
+.prose ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.do-dont{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px}
+.do-dont > div{border-radius:var(--r);padding:12px 14px;border:1px solid var(--line)}
+.do{background:var(--ok-soft)} .dont{background:var(--bad-soft)}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(10,8,6,.55);z-index:20;display:flex;align-items:flex-end;justify-content:center;padding:env(safe-area-inset-top,0px) max(0px, env(safe-area-inset-right,0px)) 0 max(0px, env(safe-area-inset-left,0px))}
+@media (min-width:640px){.overlay{align-items:center}}
+.modal{background:var(--surface);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:14px 14px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
+@media (min-width:640px){.modal{border-radius:14px}}
+.field{display:flex;flex-direction:column;gap:5px}
+.field > label,.field > span.lbl{font-weight:700;font-size:.9rem}
+.field .hint{font-size:.82rem;color:var(--muted)}
+.field input[type=text],.field input[type=date],.field input[type=time],.field input[type=number],.field select,.field textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.field textarea{min-height:76px;resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:.93rem}
+.check input{margin-top:4px;flex:none;width:18px;height:18px}
+.err{color:var(--bad);font-weight:700;font-size:.9rem}
+.opts{display:flex;flex-wrap:wrap;gap:6px}
+.opts label{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:.88rem;cursor:pointer;background:var(--bg)}
+.scale{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center}
+.scale select{padding:6px;border-radius:6px;border:1px solid var(--line);background:var(--bg)}
+.suggest{display:flex;flex-direction:column;gap:6px}
+.suggest label{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:8px;cursor:pointer;background:var(--bg)}
+.suggest label.best{border-color:var(--pine)}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:30;font-weight:700;max-width:calc(100% - 32px)}
+@media (prefers-reduced-motion:no-preference){.toast{animation:up .2s ease-out}@keyframes up{from{transform:translate(-50%,10px);opacity:0}}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="knot" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none" stroke="var(--brique-ink)" stroke-width="2.4" stroke-linecap="round"><path d="M5 16c4-8 10-8 11 0s7 8 11 0"/><path d="M5 16c4 8 10 8 11 0s7-8 11 0"/></svg>
+      </div>
+      <div style="min-width:0">
+        <small>Scouting Hellevoetsluis · RSA 782 &amp; Wilde Vaart</small>
+        <h1>Explorer Stagebord</h1>
+      </div>
+    </div>
+    <div class="role">
+      <label for="rolSelect">Ik kijk als</label>
+      <select id="rolSelect"></select>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" id="tabs"></nav>
+  <div id="status" class="notice" hidden></div>
+  <main id="view"></main>
+</div>
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
+
+<script>
+(() => {
+"use strict";
+
+/* ======== INSTELLINGEN – vul deze drie regels in ======== */
+const SUPABASE_URL      = "https://lcqejbeodsdglnbunbak.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_4cLDZudbT1JQK0ieAAuvYw_89XvRYFZ";
+const COORD_PINCODE     = "1234";                          // pincode voor de rol Stagecoördinator
+/* ======================================================== */
+
+/* ---------- Vaste structuur (namen van speltakken) ---------- */
+const SPELTAKKEN = [
+  {id:"bevers", naam:"Bevers", soort:"Bevers", leeftijd:"5–7 jaar", kleur:"#b0703a", uitz:false},
+  {id:"dahinda", naam:"Dahinda Horde", soort:"Welpen", leeftijd:"7–11 jaar", kleur:"#4f8a3c", uitz:false},
+  {id:"shanti", naam:"Shanti Horde", soort:"Welpen", leeftijd:"7–11 jaar", kleur:"#2f7a5f", uitz:false},
+  {id:"voornse", naam:"Voornse Trekkershorde", soort:"Welpen", leeftijd:"7–11 jaar", kleur:"#6d8a2a", uitz:false},
+  {id:"orcas", naam:"Orca's", soort:"Watertak", leeftijd:"", kleur:"#2a6c9c", uitz:false},
+  {id:"land", naam:"Landverkenners", soort:"Scouts", leeftijd:"11–15 jaar", kleur:"#8a6a2e", uitz:true},
+  {id:"lucht", naam:"Luchtverkenners", soort:"Scouts", leeftijd:"11–15 jaar", kleur:"#4b6aa8", uitz:true},
+  {id:"amfibieen", naam:"Amfibieën", soort:"Scouts", leeftijd:"11–15 jaar", kleur:"#2f8a8a", uitz:true},
+];
+const TAK = Object.fromEntries(SPELTAKKEN.map(s=>[s.id,s]));
+const AFDELINGEN = ["RSA 782","Wilde Vaart"];
+const SOORTEN = ["Leidingstage (eigen kweek)","Maatschappelijke stage (school)","Snuffelstage (1–2 keer proeven)"];
+const STAPPEN = [
+  {n:1, t:"Meelopen", d:"Kennismaken, kijken hoe de leiding werkt, meedoen met de jeugdleden."},
+  {n:2, t:"Spel leiden", d:"Eén spel of onderdeel uitleggen en begeleiden, met leiding ernaast."},
+  {n:3, t:"Onderdeel maken", d:"Zelf een onderdeel bedenken, voorbereiden, uitvoeren en nabespreken."},
+  {n:4, t:"Opkomst meedraaien", d:"Een hele opkomst mee voorbereiden met het team en samen evalueren."},
+];
+const EVAL_PUNTEN = [
+  ["contact","Contact met de jeugdleden"],
+  ["uitleg","Spel uitleggen (helder, op hun niveau)"],
+  ["initiatief","Initiatief nemen en meedenken"],
+  ["afspraken","Afspraken nakomen (op tijd, afmelden)"],
+  ["veilig","Oog voor veiligheid en groep"],
+];
+const SCHAAL = {"":"—","1":"Groeit nog","2":"Gaat goed","3":"Sterk punt"};
+const STATUS_TXT = {
+  gevraagd:"Speltak zoekt stagiair", geclaimd:"Wacht op coördinator", voorgesteld:"Wacht op speltak",
+  bevestigd:"Bevestigd", afgerond:"Afgerond", geannuleerd:"Geannuleerd", afgewezen:"Afgewezen"
+};
+
+/* ---------- Helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const todayISO = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+const MAANDEN = ["januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"];
+const DAGEN = ["zo","ma","di","wo","do","vr","za"];
+function fmtDate(iso){ if(!iso) return "—"; const d=new Date(iso+"T12:00:00"); return `${DAGEN[d.getDay()]} ${d.getDate()} ${MAANDEN[d.getMonth()].slice(0,3)}`; }
+function hours(van,tot){ if(!van||!tot) return 0; const [a,b]=van.split(":").map(Number), [c,e]=tot.split(":").map(Number); return Math.max(0,((c*60+e)-(a*60+b))/60); }
+function nowStamp(){ const d=new Date(); return d.toISOString(); }
+function fmtStamp(s){ const d=new Date(s); return `${d.getDate()} ${MAANDEN[d.getMonth()].slice(0,3)} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
+function store(k,v){ try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k,v);}catch(e){ return null; } }
+function toast(msg){ const r=$("#toastRoot"); r.innerHTML=`<div class="toast" role="status">${esc(msg)}</div>`; clearTimeout(toast.t); toast.t=setTimeout(()=>r.innerHTML="",2600); }
+
+/* ---------- State ---------- */
+const S = {
+  db:null, ready:false, readOnly:false,
+  kandidaten:[], stages:[], instellingen:{},
+  rol: store("stagebord.rol") || "kijker", sb:null,
+  tab: store("stagebord.tab") || "overzicht",
+  filter:"alle", toonOud:false,
+};
+function takInfo(id){ const base=TAK[id]||{naam:id,kleur:"#888"}; const extra=(S.instellingen[id]||{}); return {...base, ...extra}; }
+function kand(id){ return S.kandidaten.find(k=>k.id===id); }
+function rolNaam(){
+  if(S.rol==="coord") return "Selina (stagecoördinator)";
+  if(S.rol.startsWith("speltak:")){ const t=takInfo(S.rol.slice(8)); return `${t.teamleider? t.teamleider+" – ":""}teamleider ${t.naam}`; }
+  if(S.rol.startsWith("explorer:")){ const k=kand(S.rol.slice(9)); return k? k.naam : "Explorer"; }
+  return "Kijker";
+}
+const isCoord = () => S.rol==="coord";
+const mySpeltak = () => S.rol.startsWith("speltak:") ? S.rol.slice(8) : null;
+const myExplorer = () => S.rol.startsWith("explorer:") ? S.rol.slice(9) : null;
+
+/* ---------- Data (Supabase) ---------- */
+const STAGE_COLS={kandidaatId:"kandidaat_id",uitzReden:"uitz_reden",evalBegeleider:"eval_begeleider"};
+const KAND_COLS={urenDoel:"uren_doel"};
+function toRow(obj,map){ const r={}; for(const [k,v] of Object.entries(obj)){ if(k==="aangemaakt") continue; const c=map[k]||k; r[c]=(c==="kandidaat_id" && !v)?null:v; } return r; }
+function fromRow(row,map){ const inv=Object.fromEntries(Object.entries(map).map(([a,b])=>[b,a])); const o={}; for(const [k,v] of Object.entries(row)) o[inv[k]||k]=v; if("kandidaatId" in o && !o.kandidaatId) o.kandidaatId=""; return o; }
+
+const api = {
+  async addStage(doc){ const {error}=await S.sb.from("stage_stages").insert(toRow(doc,STAGE_COLS)); if(error) throw error; },
+  async updStage(id,patch){ const {error}=await S.sb.from("stage_stages").update(toRow(patch,STAGE_COLS)).eq("id",id); if(error) throw error; },
+  async addKand(doc){ const {data,error}=await S.sb.from("stage_kandidaten").insert(toRow(doc,KAND_COLS)).select("id").single(); if(error) throw error; return data.id; },
+  async updKand(id,patch){ const {error}=await S.sb.from("stage_kandidaten").update(toRow(patch,KAND_COLS)).eq("id",id); if(error) throw error; },
+  async setTakken(takken){ const {error}=await S.sb.from("stage_instellingen").upsert({id:"speltakken",takken}); if(error) throw error; },
+};
+
+async function laad(){
+  const [k,s,i]=await Promise.all([
+    S.sb.from("stage_kandidaten").select("*"),
+    S.sb.from("stage_stages").select("*"),
+    S.sb.from("stage_instellingen").select("*").eq("id","speltakken"),
+  ]);
+  const err=k.error||s.error||i.error;
+  if(err){ showStatus("Kan de gegevens niet ophalen: "+err.message+". Controleer of je supabase-setup.sql hebt uitgevoerd.", true, true); return; }
+  S.kandidaten=k.data.map(r=>fromRow(r,KAND_COLS)).sort((a,b)=>(a.naam||"").localeCompare(b.naam||""));
+  S.stages=s.data.map(r=>fromRow(r,STAGE_COLS));
+  S.instellingen=(i.data[0]&&i.data[0].takken)||{};
+  S.ready=true; $("#status").hidden=true; render();
+}
+let laadTimer=null;
+function laadStraks(){ clearTimeout(laadTimer); laadTimer=setTimeout(laad,300); }
+
+async function boot(){
+  render();
+  if(!window.supabase || SUPABASE_URL.startsWith("PLAK") || SUPABASE_ANON_KEY.startsWith("PLAK")){
+    showStatus("Nog niet gekoppeld aan Supabase. Vul SUPABASE_URL en SUPABASE_ANON_KEY in bovenaan het script in index.html (zie LEESMIJ.md).", true);
+    S.ready=true; render(); return;
+  }
+  S.sb=window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  S.db=true;
+  await laad();
+  S.sb.channel("stagebord")
+    .on("postgres_changes",{event:"*",schema:"public",table:"stage_stages"},laadStraks)
+    .on("postgres_changes",{event:"*",schema:"public",table:"stage_kandidaten"},laadStraks)
+    .on("postgres_changes",{event:"*",schema:"public",table:"stage_instellingen"},laadStraks)
+    .subscribe();
+  setInterval(()=>{ if(!document.hidden) laad(); },20000);
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) laad(); });
+}
+function showStatus(msg, warn, retry){ const el=$("#status"); el.hidden=false; el.className="notice"+(warn?" warn":""); el.textContent=msg; el.style.marginBottom="16px";
+  if(retry){ const b=document.createElement("button"); b.className="btn sm primary"; b.style.marginLeft="10px"; b.textContent="Opnieuw proberen"; b.addEventListener("click",()=>laad()); el.appendChild(b); } }
+
+async function write(fn, okMsg){
+  if(!S.db){ toast("Nog niet gekoppeld aan de database."); return false; }
+  try{ await fn(); if(okMsg) toast(okMsg); laadStraks(); return true; }
+  catch(e){ console.error(e); toast("Opslaan mislukt: "+(e?.message||"onbekende fout")); return false; }
+}
+function logEntry(tekst){ return {t:nowStamp(), wie:rolNaam(), tekst}; }
+async function updStage(st, patch, logTxt, okMsg){
+  const log = [...(st.log||[]), logEntry(logTxt)].slice(-30);
+  return write(()=>api.updStage(st.id,{...patch, log}), okMsg);
+}
+
+/* ---------- Actie-inbox per rol ---------- */
+function todo(){
+  const t=todayISO();
+  const open = S.stages.filter(s=>!["geannuleerd","afgewezen","afgerond"].includes(s.status));
+  if(isCoord()) return open.filter(s=> s.status==="gevraagd" || s.status==="geclaimd" || (s.status==="bevestigd" && s.datum<t && !s.evalBegeleider));
+  const tk=mySpeltak();
+  if(tk) return open.filter(s=> s.speltak===tk && (s.status==="voorgesteld" || (s.status==="bevestigd" && s.datum<=t && !s.evalBegeleider)));
+  const ex=myExplorer();
+  if(ex) return S.stages.filter(s=> s.kandidaatId===ex && ((s.status==="bevestigd" && s.datum>=t) || (s.datum<=t && ["bevestigd","afgerond"].includes(s.status) && !s.reflectie)));
+  return [];
+}
+
+/* ---------- Rendering ---------- */
+const TABS = [
+  ["overzicht","Overzicht"],["agenda","Agenda"],["explorers","Explorers"],["speltakken","Speltakken"],["gids","Stagegids"]
+];
+function render(){
+  renderRole();
+  const n = todo().length;
+  $("#tabs").innerHTML = TABS.map(([id,l])=>`<button role="tab" aria-selected="${S.tab===id}" data-tab="${id}">${l}${id==="overzicht"&&n?`<span class="count">${n}</span>`:""}</button>`).join("");
+  const v=$("#view");
+  const scroll=window.scrollY;
+  v.innerHTML = ({overzicht:viewOverzicht, agenda:viewAgenda, explorers:viewExplorers, speltakken:viewSpeltakken, gids:viewGids}[S.tab]||viewOverzicht)();
+  window.scrollTo(0,scroll);
+}
+function renderRole(){
+  const sel=$("#rolSelect");
+  const opts = [`<option value="coord">Stagecoördinator – Selina</option>`,
+    `<optgroup label="Teamleider van speltak">${SPELTAKKEN.map(s=>`<option value="speltak:${s.id}">${esc(s.naam)}${s.uitz?" (uitzondering)":""}</option>`).join("")}</optgroup>`,
+    S.kandidaten.length?`<optgroup label="Explorer">${S.kandidaten.map(k=>`<option value="explorer:${esc(k.id)}">${esc(k.naam)}</option>`).join("")}</optgroup>`:"",
+    `<option value="kijker">Alleen meekijken</option>`].join("");
+  if(sel.dataset.sig!==opts){ sel.innerHTML=opts; sel.dataset.sig=opts; }
+  if([...sel.options].some(o=>o.value===S.rol)) sel.value=S.rol;
+}
+
+function stageCard(s, opts={}){
+  const t=takInfo(s.speltak), k=kand(s.kandidaatId);
+  const stap = STAPPEN.find(x=>x.n===Number(s.stap));
+  const acts = stageActions(s);
+  return `<article class="card" style="--tak:${esc(t.kleur)}">
+    <div class="strip"></div>
+    <div class="body">
+      <div class="row" style="justify-content:space-between">
+        <div class="row" style="gap:8px"><span class="date">${fmtDate(s.datum)}</span><span class="muted small">${esc(s.van||"")}${s.tot?"–"+esc(s.tot):""}</span></div>
+        <span class="pill s-${esc(s.status)}">${esc(STATUS_TXT[s.status]||s.status)}</span>
+      </div>
+      <div class="row" style="gap:8px">
+        <h3>${esc(t.naam)}</h3>
+        ${t.uitz?`<span class="tag exc">Uitzondering</span>`:""}
+        ${stap?`<span class="tag">Stap ${stap.n}: ${esc(stap.t)}</span>`:""}
+      </div>
+      <div class="meta">
+        <span>Stagiair: <b style="color:var(--fg)">${k?esc(k.naam):"nog niet gekoppeld"}</b>${k?` · ${esc(k.afdeling)}`:""}</span>
+        <span>Begeleider: ${esc(s.begeleider || t.teamleider || "teamleider "+t.naam)}</span>
+      </div>
+      ${s.reden?`<p class="why"><span class="muted">Waarom: </span>${esc(s.reden)}</p>`:""}
+      ${s.taak?`<p class="why"><span class="muted">Stagiair gaat: </span>${esc(s.taak)}</p>`:""}
+      ${s.uitzReden?`<p class="why small"><span class="muted">Reden uitzondering: </span>${esc(s.uitzReden)}</p>`:""}
+      ${s.evalBegeleider?evalSummary(s):""}
+      ${s.reflectie?`<p class="why small"><span class="muted">Reflectie explorer: </span>${esc(s.reflectie)}</p>`:""}
+      ${acts?`<div class="actions">${acts}</div>`:""}
+      ${opts.log!==false && s.log?.length?`<details class="log"><summary>Berichten (${s.log.length})</summary>${s.log.slice().reverse().map(l=>`<div>${esc(fmtStamp(l.t))} · <b>${esc(l.wie)}</b>: ${esc(l.tekst)}</div>`).join("")}</details>`:""}
+    </div>
+  </article>`;
+}
+function evalSummary(s){
+  const e=s.evalBegeleider;
+  const sterk=EVAL_PUNTEN.filter(([k])=>e.scores?.[k]==="3").map(x=>x[1]);
+  return `<div class="notice small" style="background:var(--ok-soft)"><b>Terugkoppeling begeleider</b>${sterk.length?` · sterk: ${esc(sterk.join(", "))}`:""}${e.top?`<br>Top: ${esc(e.top)}`:""}${e.tip?`<br>Tip: ${esc(e.tip)}`:""}</div>`;
+}
+function stageActions(s){
+  if(S.readOnly||!S.db) return "";
+  const b=[], t=todayISO(), tk=mySpeltak(), ex=myExplorer();
+  const B=(act,label,cls="")=>`<button class="btn sm ${cls}" data-act="${act}" data-id="${esc(s.id)}">${label}</button>`;
+  const actief = !["geannuleerd","afgewezen","afgerond"].includes(s.status);
+  if(isCoord()){
+    if(s.status==="gevraagd") b.push(B("propose","Stagiair voorstellen","primary"));
+    if(s.status==="geclaimd") b.push(B("confirm","Bevestigen","primary"), B("reject","Afwijzen"));
+    if(s.status==="bevestigd" && s.datum<t && !s.evalBegeleider) b.push(B("eval","Evaluatie invullen"));
+  }
+  if(tk && s.speltak===tk){
+    if(s.status==="voorgesteld") b.push(B("accept","Akkoord","primary"), B("decline","Liever niet"));
+    if(s.status==="bevestigd" && s.datum<=t && !s.evalBegeleider) b.push(B("eval","Evaluatie invullen","primary"));
+  }
+  if(ex && s.kandidaatId===ex && s.datum<=t && ["bevestigd","afgerond"].includes(s.status) && !s.reflectie) b.push(B("reflect","Mijn reflectie","primary"));
+  if(actief && (isCoord() || (tk&&s.speltak===tk) || (ex&&s.kandidaatId===ex))){
+    b.push(B("msg","Bericht"));
+    b.push(B("cancel", ex?"Afmelden":"Annuleren","ghost danger"));
+  }
+  return b.join("");
+}
+
+function viewOverzicht(){
+  const t=todayISO();
+  const items=todo();
+  const kop = isCoord() ? "Wat ligt er bij jou, Selina" : mySpeltak() ? `Voor ${takInfo(mySpeltak()).naam}` : myExplorer() ? "Jouw stages" : "Overzicht";
+  const binnenkort = S.stages.filter(s=>s.status==="bevestigd" && s.datum>=t).sort((a,b)=>a.datum.localeCompare(b.datum)).slice(0,5);
+  const counts = {
+    open: S.stages.filter(s=>s.status==="gevraagd").length,
+    wacht: S.stages.filter(s=>["geclaimd","voorgesteld"].includes(s.status)).length,
+    bev: S.stages.filter(s=>s.status==="bevestigd" && s.datum>=t).length,
+    beschikbaar: S.kandidaten.reduce((n,k)=>n+(k.beschikbaar||[]).filter(a=>a.datum>=t && !bezet(k.id,a.datum)).length,0),
+  };
+  let cta="";
+  if(mySpeltak() && !S.readOnly) cta=`<div class="row"><button class="btn primary" data-act="newRequest">Stagiair aanvragen</button><button class="btn" data-tab="explorers">Beschikbare explorers bekijken</button></div>`;
+  if(isCoord() && !S.readOnly) cta=`<div class="row"><button class="btn primary" data-act="newPlan">Stage inplannen</button><button class="btn" data-act="newKand">Explorer toevoegen</button></div>`;
+  if(myExplorer() && !S.readOnly) cta=`<div class="row"><button class="btn primary" data-act="addAvail" data-id="${esc(myExplorer())}">Ik ben beschikbaar op…</button></div>`;
+  if(!S.ready) return `<div class="empty">Agenda laden…</div>`;
+  return `
+  <section class="section">
+    <div class="section-head"><h2>${esc(kop)}</h2><span class="muted small">Je kijkt als ${esc(rolNaam())}</span></div>
+    ${cta}
+    <p class="small muted">${counts.open} speltak-aanvragen open · ${counts.wacht} wachten op akkoord · ${counts.bev} bevestigd en gepland · ${counts.beschikbaar} vrije beschikbare data van explorers</p>
+    ${S.rol==="kijker" ? `<div class="notice">Kies bovenaan wie je bent. Teamleiders vragen stagiairs aan en claimen explorers, Selina koppelt en bevestigt, explorers geven hun data op.</div>`
+      : items.length ? `<div class="stack">${items.sort((a,b)=>(a.datum||"").localeCompare(b.datum||"")).map(s=>stageCard(s)).join("")}</div>`
+      : `<div class="empty">Er wacht niets op je. ${mySpeltak()?"Vraag een stagiair aan of claim een explorer die beschikbaar is.":isCoord()?"Nieuwe aanvragen en claims verschijnen hier vanzelf.":"Geef je beschikbare zaterdagen op, dan kunnen speltakken je vragen."}</div>`}
+  </section>
+  ${mySpeltak()?eigenSpeltak():""}
+  ${myExplorer()?eigenExplorer():""}
+  <section class="section">
+    <div class="section-head"><h2>Binnenkort</h2><button class="btn ghost sm" data-tab="agenda">Hele agenda</button></div>
+    ${binnenkort.length? `<div class="stack">${binnenkort.map(s=>stageCard(s,{log:false})).join("")}</div>` : `<div class="empty">Nog geen bevestigde stages gepland.</div>`}
+  </section>`;
+}
+function eigenSpeltak(){
+  const tk=mySpeltak(), t=todayISO();
+  const mine=S.stages.filter(s=>s.speltak===tk && s.datum>=t && !["geannuleerd","afgewezen"].includes(s.status) && !todo().includes(s)).sort((a,b)=>a.datum.localeCompare(b.datum));
+  const vrij = vrijeExplorers(tk).slice(0,6);
+  return `<section class="section"><h2>Jullie aanvragen en stages</h2>
+    ${mine.length?`<div class="stack">${mine.map(s=>stageCard(s)).join("")}</div>`:`<div class="empty">Nog niets aangevraagd voor ${esc(takInfo(tk).naam)}.</div>`}
+  </section>
+  <section class="section"><div class="section-head"><h2>Explorers die zich beschikbaar hebben gesteld</h2></div>
+    ${vrij.length?`<div class="avail">${vrij.map(v=>`<button class="chip claim" data-act="claim" data-id="${esc(v.k.id)}" data-date="${esc(v.datum)}">${esc(fmtDate(v.datum))} · ${esc(v.k.naam)}${v.pref?" ★":""}</button>`).join("")}</div><p class="small muted">★ = heeft jullie speltak als voorkeur. Tik om te claimen; Selina bevestigt.</p>`:`<div class="empty">Op dit moment heeft geen explorer vrije data opgegeven.</div>`}
+  </section>`;
+}
+function eigenExplorer(){
+  const k=kand(myExplorer()); if(!k) return "";
+  return `<section class="section"><h2>Jouw stagekaart</h2>${explorerCard(k,true)}</section>`;
+}
+function bezet(kid,datum){ return S.stages.some(s=>s.kandidaatId===kid && s.datum===datum && !["geannuleerd","afgewezen"].includes(s.status)); }
+function vrijeExplorers(tk){
+  const t=todayISO(), out=[];
+  S.kandidaten.filter(k=>k.actief!==false).forEach(k=>(k.beschikbaar||[]).forEach(a=>{ if(a.datum>=t && !bezet(k.id,a.datum)) out.push({k,datum:a.datum,notitie:a.notitie,pref:(k.voorkeur||[]).includes(tk)}); }));
+  return out.sort((a,b)=> (b.pref-a.pref) || a.datum.localeCompare(b.datum));
+}
+
+function viewAgenda(){
+  if(!S.ready) return `<div class="empty">Agenda laden…</div>`;
+  const t=todayISO();
+  let list=S.stages.filter(s=>S.toonOud || s.datum>=t || ["gevraagd","geclaimd","voorgesteld"].includes(s.status));
+  if(S.filter!=="alle") list=list.filter(s=>s.speltak===S.filter);
+  list.sort((a,b)=>(a.datum||"").localeCompare(b.datum||""));
+  const byMonth={};
+  list.forEach(s=>{ const m=(s.datum||"").slice(0,7); (byMonth[m]=byMonth[m]||{}); (byMonth[m][s.datum]=byMonth[m][s.datum]||[]).push(s); });
+  const f=`<div class="filters" role="group" aria-label="Filter op speltak"><button aria-pressed="${S.filter==="alle"}" data-filter="alle">Alle speltakken</button>${SPELTAKKEN.map(s=>`<button aria-pressed="${S.filter===s.id}" data-filter="${s.id}"><span class="dot" style="background:${s.kleur}"></span>${esc(s.naam)}</button>`).join("")}</div>`;
+  const body = Object.keys(byMonth).sort().map(m=>{
+    const [y,mm]=m.split("-");
+    return `<div class="stack"><div class="month">${MAANDEN[Number(mm)-1]} ${y}</div>${Object.keys(byMonth[m]).sort().map(d=>{
+      const dt=new Date(d+"T12:00:00");
+      return `<div class="daygroup"><div class="daybox"><span>${DAGEN[dt.getDay()]}</span><b>${dt.getDate()}</b></div><div class="stack">${byMonth[m][d].map(s=>stageCard(s)).join("")}</div></div>`;
+    }).join("")}</div>`;
+  }).join("");
+  return `<section class="section">
+    <div class="section-head"><h2>Stage-agenda</h2>
+      <div class="row">${(isCoord()&&!S.readOnly)?`<button class="btn primary sm" data-act="newPlan">Stage inplannen</button>`:""}${(mySpeltak()&&!S.readOnly)?`<button class="btn primary sm" data-act="newRequest">Stagiair aanvragen</button>`:""}
+      <label class="small"><input type="checkbox" id="toonOud" ${S.toonOud?"checked":""}> ook afgelopen</label></div></div>
+    ${f}
+    ${list.length? body : `<div class="empty">Geen stages in deze selectie. Teamleiders vragen een stagiair aan via "Stagiair aanvragen"; Selina plant via "Stage inplannen".</div>`}
+  </section>`;
+}
+
+function explorerCard(k, self=false){
+  const t=todayISO();
+  const mine=S.stages.filter(s=>s.kandidaatId===k.id && !["geannuleerd","afgewezen"].includes(s.status));
+  const uren=mine.filter(s=>s.status==="afgerond").reduce((n,s)=>n+hours(s.van,s.tot),0);
+  const doel=Number(k.urenDoel)||0;
+  const pct= doel? Math.min(100, Math.round(uren/doel*100)) : 0;
+  const hoogsteStap = Math.max(0,...mine.filter(s=>s.status==="afgerond").map(s=>Number(s.stap)||0));
+  const avail=(k.beschikbaar||[]).filter(a=>a.datum>=t).sort((a,b)=>a.datum.localeCompare(b.datum));
+  const canEdit = !S.readOnly && S.db && (isCoord() || myExplorer()===k.id);
+  const tk=mySpeltak();
+  return `<div class="xcard">
+    <div class="xhead"><div style="min-width:0"><h3>${esc(k.naam)}</h3><p class="small muted">${esc(k.soort||"")}</p></div>
+      <span class="badge ${k.afdeling==="Wilde Vaart"?"b-wv":"b-rsa"}">${esc(k.afdeling)}</span></div>
+    ${k.leerdoelen?`<p class="small"><span class="muted">Leerdoel: </span>${esc(k.leerdoelen)}</p>`:""}
+    ${(k.voorkeur||[]).length?`<p class="small"><span class="muted">Voorkeur: </span>${k.voorkeur.map(v=>esc(takInfo(v).naam)).join(", ")}</p>`:""}
+    <div class="stack" style="gap:4px">
+      <div class="row small" style="justify-content:space-between"><span>${uren.toLocaleString("nl-NL",{maximumFractionDigits:1})} uur gelopen${doel?` van ${doel}`:""}</span><span class="muted">${hoogsteStap?`bereikt: stap ${hoogsteStap}`:"nog geen stage afgerond"}</span></div>
+      ${doel?`<div class="bar" aria-hidden="true"><i style="width:${pct}%"></i></div>`:""}
+    </div>
+    <div class="stack" style="gap:6px"><span class="eyebrow">Beschikbaar</span>
+      ${avail.length?`<div class="avail">${avail.map(a=>{ const b=bezet(k.id,a.datum);
+        if(tk && !b && !S.readOnly && S.db) return `<button class="chip claim" data-act="claim" data-id="${esc(k.id)}" data-date="${esc(a.datum)}" title="${esc(a.notitie||"")}">${esc(fmtDate(a.datum))} · claimen</button>`;
+        return `<span class="chip" title="${esc(a.notitie||"")}">${esc(fmtDate(a.datum))}${b?" · ingepland":""}${canEdit&&!b?`<button aria-label="Datum verwijderen" data-act="delAvail" data-id="${esc(k.id)}" data-date="${esc(a.datum)}">✕</button>`:""}</span>`; }).join("")}</div>`
+        :`<p class="small muted">Geen data opgegeven.</p>`}
+    </div>
+    ${canEdit?`<div class="row"><button class="btn sm primary" data-act="addAvail" data-id="${esc(k.id)}">Data toevoegen</button><button class="btn sm" data-act="editKand" data-id="${esc(k.id)}">Gegevens</button></div>`:""}
+  </div>`;
+}
+function viewExplorers(){
+  if(!S.ready) return `<div class="empty">Laden…</div>`;
+  const groups = AFDELINGEN.map(a=>[a, S.kandidaten.filter(k=>k.afdeling===a && k.actief!==false)]);
+  return `<section class="section">
+    <div class="section-head"><h2>Stagekandidaten</h2>${(!S.readOnly&&S.db)?`<button class="btn primary sm" data-act="newKand">Explorer toevoegen</button>`:""}</div>
+    <p class="small muted" style="max-width:68ch">Explorers geven hier zelf hun beschikbare opkomstdata op. Teamleiders kunnen een vrije datum claimen; Selina bevestigt daarna.</p>
+    ${S.kandidaten.length?groups.map(([a,ks])=>`<div class="stack"><h3>${esc(a)} <span class="muted small">(${ks.length})</span></h3>${ks.length?`<div class="grid2">${ks.map(k=>explorerCard(k)).join("")}</div>`:`<p class="small muted">Nog niemand van ${esc(a)}.</p>`}</div>`).join("")
+      :`<div class="empty">Nog geen explorers aangemeld. Voeg de eerste stagekandidaat toe met "Explorer toevoegen". Een explorer kan zichzelf ook toevoegen.</div>`}
+  </section>`;
+}
+
+function viewSpeltakken(){
+  const t=todayISO();
+  const rows=SPELTAKKEN.map(s=>{ const i=takInfo(s.id);
+    const gepland=S.stages.filter(x=>x.speltak===s.id && x.status==="bevestigd" && x.datum>=t).length;
+    const gehad=S.stages.filter(x=>x.speltak===s.id && x.status==="afgerond").length;
+    const editable = isCoord() && !S.readOnly && S.db;
+    const cell=(f,ph)=> editable?`<input id="tak-${s.id}-${f}" data-tak="${s.id}" data-field="${f}" value="${esc(i[f]||"")}" placeholder="${esc(ph)}">`:esc(i[f]||"—");
+    return `<tr><td><span class="dot" style="background:${s.kleur}"></span><b>${esc(s.naam)}</b>${s.uitz?` <span class="tag exc">uitzondering</span>`:""}<div class="small muted">${esc(s.soort)}</div></td>
+      <td>${cell("leeftijd","bijv. 7–11 jaar")}</td><td>${cell("teamleider","naam teamleider")}</td><td>${cell("opkomst","bijv. za 10:00–12:00")}</td>
+      <td class="small" style="font-variant-numeric:tabular-nums">${gepland} gepland<br>${gehad} gehad</td></tr>`; }).join("");
+  return `<section class="section">
+    <div class="section-head"><h2>Speltakken en begeleiders</h2></div>
+    <p class="small muted" style="max-width:68ch">De teamleider van de speltak is stagebegeleider tijdens die opkomst. ${isCoord()?"Vul namen en opkomsttijden in; ze worden automatisch opgeslagen.":"Alleen Selina past deze gegevens aan."}</p>
+    <div class="tablewrap"><table><thead><tr><th>Speltak</th><th>Leeftijd</th><th>Teamleider (begeleider)</th><th>Opkomst</th><th>Stages</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="notice small"><strong>Uitzondering scouts.</strong> Landverkenners, Luchtverkenners en Amfibieën liggen qua leeftijd dicht bij de explorers. Een stage daar kan alleen met een duidelijke reden en altijd na akkoord van Selina.</div>
+  </section>`;
+}
+
+function viewGids(){
+  return `<section class="section"><h2>Zo werkt stagelopen</h2>
+    <div class="prose">
+      <p>Explorers bedenken en organiseren hun eigen programma. Een stage bij een jongere speltak is de volgende stap: je leert hoe je een groep kinderen meeneemt in een spel, en het leidingteam ziet of jij later misschien leiding wilt worden. De beste leiding komt vaak "uit eigen kweek".</p>
+      <p>Je kunt op twee manieren stagelopen: als <b>leidingstage</b> voor je eigen ontwikkeling, of als <b>maatschappelijke stage</b> voor school. Bij een maatschappelijke stage houdt het systeem je uren bij, zodat je die aan school kunt laten zien.</p>
+    </div></section>
+  <section class="section"><h2>Wie doet wat</h2>
+    <div class="grid2">
+      <div class="xcard"><span class="eyebrow">Stagecoördinator</span><h3>Selina</h3><p class="small">Houdt het overzicht, koppelt explorers aan aanvragen, bevestigt claims, keurt uitzonderingen goed en bewaakt dat niemand te vaak of te weinig aan de beurt is.</p></div>
+      <div class="xcard"><span class="eyebrow">Stagebegeleider</span><h3>Teamleider van de speltak</h3><p class="small">Is die opkomst het aanspreekpunt van de stagiair. Bespreekt vooraf de taak, kijkt mee tijdens de opkomst en vult na afloop de korte evaluatie in.</p></div>
+      <div class="xcard"><span class="eyebrow">Stagiair</span><h3>Explorer (RSA 782 of Wilde Vaart)</h3><p class="small">Geeft beschikbare data op, bereidt zijn of haar onderdeel voor, is op tijd, meldt zich tijdig af en schrijft na afloop een korte reflectie.</p></div>
+    </div></section>
+  <section class="section"><h2>De stage-ladder</h2>
+    <p class="small muted" style="max-width:68ch">Bouw verantwoordelijkheid stap voor stap op. Begin bij een nieuwe speltak altijd bij stap 1, ook als je elders al verder bent.</p>
+    <div class="ladder">${STAPPEN.map(s=>`<div class="rung"><span class="n">${s.n}</span><b>${esc(s.t)}</b><p class="small">${esc(s.d)}</p></div>`).join("")}</div></section>
+  <section class="section"><h2>Een stagiair is geen vervanging</h2>
+    <div class="do-dont">
+      <div class="do"><h3>Wel</h3><ul class="small" style="margin:6px 0 0;padding-left:18px"><li>Extra handen naast een volledig leidingteam</li><li>Een eigen, afgebakende taak (een spel, een onderdeel)</li><li>Altijd leiding in de buurt die eindverantwoordelijk blijft</li><li>Vooraf de taak bespreken, achteraf feedback geven</li></ul></div>
+      <div class="dont"><h3>Niet</h3><ul class="small" style="margin:6px 0 0;padding-left:18px"><li>Een stagiair vragen omdat er leiding ontbreekt</li><li>Een stagiair alleen laten met jeugdleden</li><li>Taken als EHBO, toezicht op het water of medicatie</li><li>Een stagiair laten tellen voor de minimale bezetting</li></ul></div>
+    </div>
+    <p class="small muted" style="max-width:68ch">Daarom vraagt het systeem bij elke aanvraag hoeveel leiding er die opkomst is. Bij minder dan twee leiding kan een speltak geen stagiair aanvragen.</p></section>
+  <section class="section"><h2>Tips per leeftijd</h2>
+    <div class="grid2">
+      <div class="xcard"><h3>Bevers (5–7)</h3><p class="small">Korte spellen van 10 minuten, veel herhaling, één opdracht tegelijk. Ga door je knieën als je iets uitlegt. Speel mee in het verhaal van de speltak.</p></div>
+      <div class="xcard"><h3>Welpen en hordes (7–11)</h3><p class="small">Ze willen winnen en eerlijke regels. Leg uit, doe het voor, laat het één keer oefenen. Spreek de leiding aan met hun jungle- of themanaam als de horde dat gebruikt.</p></div>
+      <div class="xcard"><h3>Waterspeltak</h3><p class="small">Op en bij het water geldt altijd wat de leiding zegt. Jij doet geen toezicht of bootsbegeleiding zonder de juiste bevoegdheid; je helpt aan wal of met spellen.</p></div>
+      <div class="xcard"><h3>Scouts (uitzondering)</h3><p class="small">Het leeftijdsverschil is klein. Wees duidelijk in je rol: je bent een hulpstaflid, geen vriend die de regels oprekt. Werk vooral aan techniekonderdelen.</p></div>
+    </div></section>
+  <section class="section"><h2>Checklist rond een stage-opkomst</h2>
+    <div class="grid2">
+      <div class="xcard"><span class="eyebrow">Een week vooraf</span><ul class="small" style="margin:0;padding-left:18px"><li>Teamleider stuurt de taak en het thema</li><li>Explorer bereidt het onderdeel voor en vraagt wat er klaar moet liggen</li><li>Afmelden? Minstens drie dagen vooraf, via "Afmelden"</li></ul></div>
+      <div class="xcard"><span class="eyebrow">Op de dag</span><ul class="small" style="margin:0;padding-left:18px"><li>Een kwartier eerder aanwezig, in uniform</li><li>Kort doornemen met de begeleider</li><li>Telefoon weg tijdens de opkomst</li></ul></div>
+      <div class="xcard"><span class="eyebrow">Na afloop</span><ul class="small" style="margin:0;padding-left:18px"><li>Vijf minuten nabespreken: één top en één tip</li><li>Begeleider vult de evaluatie in</li><li>Explorer schrijft een korte reflectie; uren tellen dan mee</li></ul></div>
+    </div></section>
+  <section class="section"><h2>Goed om te weten</h2>
+    <div class="prose small">
+      <ul>
+        <li>Explorers die als jeugdlid in de groep stagelopen hebben volgens Scouting Nederland in principe geen VOG nodig.</li>
+        <li>Een explorer onder de leeftijdsgrens voor leiding is tijdens de stage een hulpstaflid. De teamleider blijft verantwoordelijk.</li>
+        <li>Wil een explorer na de stage leiding worden? Dan volgt het gewone traject van de groep, inclusief VOG en training.</li>
+      </ul>
+    </div></section>`;
+}
+
+/* ---------- Modals ---------- */
+function openModal(html, onSubmit){
+  const root=$("#modalRoot");
+  root.innerHTML=`<div class="overlay" role="dialog" aria-modal="true"><form class="modal" novalidate>${html}<p class="err" id="mErr" hidden></p></form></div>`;
+  const ov=root.firstElementChild, form=ov.querySelector("form");
+  const close=()=>{ root.innerHTML=""; document.removeEventListener("keydown",esck); };
+  const esck=e=>{ if(e.key==="Escape") close(); };
+  document.addEventListener("keydown",esck);
+  ov.addEventListener("click",e=>{ if(e.target===ov || e.target.closest("[data-close]")) { e.preventDefault(); close(); } });
+  form.addEventListener("submit", async e=>{
+    e.preventDefault();
+    const err=form.querySelector("#mErr"); err.hidden=true;
+    const fd=new FormData(form);
+    const res = await onSubmit(fd, form);
+    if(typeof res==="string"){ err.textContent=res; err.hidden=false; return; }
+    if(res!==false) close();
+  });
+  const first=form.querySelector("input:not([type=hidden]),select,textarea"); first?.focus();
+  return form;
+}
+const footer=(label)=>`<div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>Annuleren</button><button type="submit" class="btn primary">${label}</button></div>`;
+const takOptions=(sel,all=true)=>SPELTAKKEN.map(s=>`<option value="${s.id}" ${s.id===sel?"selected":""}>${esc(s.naam)}${s.uitz?" (uitzondering)":""}</option>`).join("");
+
+function stageFormFields(d={}, mode){
+  const tk=d.speltak||mySpeltak()||"bevers";
+  return `
+    ${mode==="coord"?`<div class="field"><label for="f-tak">Speltak</label><select id="f-tak" name="speltak">${takOptions(tk)}</select></div>`:`<input type="hidden" name="speltak" value="${esc(tk)}">`}
+    <div class="field"><label for="f-datum">Datum opkomst</label><input type="date" id="f-datum" name="datum" min="${todayISO()}" value="${esc(d.datum||"")}" required></div>
+    <div class="two"><div class="field"><label for="f-van">Van</label><input type="time" id="f-van" name="van" value="${esc(d.van||"10:00")}"></div><div class="field"><label for="f-tot">Tot</label><input type="time" id="f-tot" name="tot" value="${esc(d.tot||"12:00")}"></div></div>
+    <div class="field"><label for="f-reden">Waarom willen jullie juist dan een stagiair?</label><textarea id="f-reden" name="reden" placeholder="Bijv. themaopkomst met postenspel, extra begeleider per post maakt het leuker">${esc(d.reden||"")}</textarea></div>
+    <div class="field"><label for="f-taak">Wat gaat de stagiair doen?</label><textarea id="f-taak" name="taak" placeholder="Bijv. één post van het postenspel leiden en de uitleg aan het begin doen">${esc(d.taak||"")}</textarea></div>
+    <div class="field"><label for="f-stap">Niveau van de taak</label><select id="f-stap" name="stap">${STAPPEN.map(s=>`<option value="${s.n}">Stap ${s.n}: ${esc(s.t)}</option>`).join("")}</select></div>
+    <div class="field" id="uitzBox"><label for="f-uitz">Reden uitzondering (alleen voor scouts)</label><textarea id="f-uitz" name="uitzReden" placeholder="Waarom is een explorer hier een meerwaarde?"></textarea></div>
+    <div class="field"><label for="f-leiding">Aantal leiding aanwezig, zonder stagiair</label><input type="number" id="f-leiding" name="leiding" min="0" max="20" value="${esc(d.leiding||"")}" required><span class="hint">Een stagiair telt nooit mee voor de bezetting.</span></div>
+    <label class="check"><input type="checkbox" name="compleet" id="f-compleet"> <span>Ons leidingteam draait deze opkomst ook zonder stagiair. De stagiair is extra, geen vervanging.</span></label>`;
+}
+function validateStage(fd){
+  const tk=fd.get("speltak"), datum=fd.get("datum");
+  if(!datum) return "Kies een datum.";
+  if(datum<todayISO()) return "Die datum ligt in het verleden.";
+  if(!fd.get("reden")?.trim()) return "Vertel waarom jullie een stagiair willen.";
+  if(Number(fd.get("leiding")||0)<2) return "Met minder dan twee leiding kan geen stagiair komen. Een stagiair vervangt geen leiding.";
+  if(!fd.get("compleet")) return "Bevestig dat jullie team ook zonder stagiair compleet is.";
+  if(TAK[tk]?.uitz && !fd.get("uitzReden")?.trim()) return "Geef een reden voor de uitzondering bij scouts.";
+  const h=hours(fd.get("van"),fd.get("tot")); if(fd.get("van")&&fd.get("tot")&&h<=0) return "De eindtijd moet na de begintijd liggen.";
+  return null;
+}
+function stageFromForm(fd){
+  const tk=fd.get("speltak"); const t=takInfo(tk);
+  return {speltak:tk, datum:fd.get("datum"), van:fd.get("van")||"", tot:fd.get("tot")||"", reden:fd.get("reden").trim(), taak:(fd.get("taak")||"").trim(),
+    stap:Number(fd.get("stap"))||1, uitzReden:TAK[tk]?.uitz?(fd.get("uitzReden")||"").trim():"", leiding:Number(fd.get("leiding")),
+    begeleider:t.teamleider||"", aangemaakt:nowStamp()};
+}
+function wireUitz(form){
+  const box=form.querySelector("#uitzBox"), sel=form.querySelector("[name=speltak]");
+  const upd=()=>{ box.hidden=!TAK[sel.value]?.uitz; };
+  sel.addEventListener?.("change",upd); upd();
+}
+
+function newRequest(){
+  const f=openModal(`<h2>Stagiair aanvragen</h2><p class="small muted">Voor ${esc(takInfo(mySpeltak()).naam)}. Selina zoekt een explorer die past, of je claimt zelf iemand die beschikbaar is.</p>${stageFormFields({}, "speltak")}${footer("Aanvraag versturen")}`,
+    async fd=>{ const e=validateStage(fd); if(e) return e;
+      const doc={...stageFromForm(fd), status:"gevraagd", kandidaatId:"", initiatief:"speltak", log:[logEntry("Stagiair aangevraagd")]};
+      return write(()=>api.addStage(doc),"Aanvraag verstuurd naar Selina"); });
+  wireUitz(f);
+}
+function newPlan(){
+  const f=openModal(`<h2>Stage inplannen</h2><p class="small muted">Plan een stage namens de coördinator. Koppel meteen een explorer of laat het open; de speltak geeft daarna akkoord.</p>${stageFormFields({}, "coord")}
+    <div class="field"><label for="f-kand">Explorer (optioneel)</label><select id="f-kand" name="kand"><option value="">Nog niet koppelen</option>${S.kandidaten.map(k=>`<option value="${esc(k.id)}">${esc(k.naam)} · ${esc(k.afdeling)}</option>`).join("")}</select></div>${footer("Inplannen")}`,
+    async fd=>{ const e=validateStage(fd); if(e) return e;
+      const kid=fd.get("kand");
+      if(kid && bezet(kid, fd.get("datum"))) return "Deze explorer staat die dag al ingepland.";
+      const doc={...stageFromForm(fd), status: kid?"voorgesteld":"gevraagd", kandidaatId:kid||"", initiatief:"coordinator", log:[logEntry(kid?`Voorgesteld: ${kand(kid)?.naam}`:"Stage aangemaakt")]};
+      return write(()=>api.addStage(doc), kid?"Voorstel naar de speltak gestuurd":"Stage aangemaakt"); });
+  wireUitz(f);
+}
+function claim(kid, datum){
+  const k=kand(kid), tk=mySpeltak(); if(!k||!tk) return;
+  const f=openModal(`<h2>${esc(k.naam)} claimen</h2><p class="small muted">${esc(fmtDate(datum))} bij ${esc(takInfo(tk).naam)}. Selina bevestigt daarna.</p>
+    ${k.leerdoelen?`<div class="notice small"><b>Leerdoel van ${esc(k.naam)}:</b> ${esc(k.leerdoelen)}</div>`:""}
+    ${stageFormFields({datum}, "speltak")}${footer("Claim versturen")}`,
+    async fd=>{ const e=validateStage(fd); if(e) return e;
+      if(fd.get("datum")!==datum && !(k.beschikbaar||[]).some(a=>a.datum===fd.get("datum"))) return `${k.naam} is alleen beschikbaar op ${fmtDate(datum)}.`;
+      if(bezet(kid, fd.get("datum"))) return "Iemand anders heeft deze datum net geclaimd.";
+      const doc={...stageFromForm(fd), status:"geclaimd", kandidaatId:kid, initiatief:"speltak", log:[logEntry(`${k.naam} geclaimd`)]};
+      return write(()=>api.addStage(doc),"Claim verstuurd naar Selina"); });
+  wireUitz(f);
+}
+function propose(s){
+  const t=s.datum;
+  const ranked=S.kandidaten.filter(k=>k.actief!==false && !bezet(k.id,t)).map(k=>{
+    const beschikbaar=(k.beschikbaar||[]).some(a=>a.datum===t);
+    const pref=(k.voorkeur||[]).includes(s.speltak);
+    const aantal=S.stages.filter(x=>x.kandidaatId===k.id && ["bevestigd","afgerond"].includes(x.status)).length;
+    return {k, score:(beschikbaar?10:0)+(pref?3:0)-aantal*0.5, beschikbaar, pref, aantal};
+  }).sort((a,b)=>b.score-a.score);
+  openModal(`<h2>Stagiair voorstellen</h2><p class="small muted">${esc(takInfo(s.speltak).naam)} · ${esc(fmtDate(s.datum))}. Bovenaan staan explorers die die dag beschikbaar zijn en deze speltak als voorkeur hebben.</p>
+    ${ranked.length?`<div class="suggest">${ranked.map((r,i)=>`<label class="${r.beschikbaar?"best":""}"><input type="radio" name="kand" value="${esc(r.k.id)}" ${i===0?"checked":""}><span style="min-width:0"><b>${esc(r.k.naam)}</b> <span class="small muted">· ${esc(r.k.afdeling)} · ${r.aantal}× gelopen</span><br><span class="small">${r.beschikbaar?"Beschikbaar die dag":"Niet als beschikbaar opgegeven"}${r.pref?" · voorkeur voor deze speltak":""}</span></span></label>`).join("")}</div>`:`<div class="empty">Geen vrije explorers. Voeg kandidaten toe op het tabblad Explorers.</div>`}
+    <div class="field"><label for="f-note">Bericht aan de speltak (optioneel)</label><textarea id="f-note" name="note"></textarea></div>${footer("Voorstellen")}`,
+    async fd=>{ const kid=fd.get("kand"); if(!kid) return "Kies een explorer.";
+      const note=(fd.get("note")||"").trim();
+      return updStage(s,{status:"voorgesteld",kandidaatId:kid},`Voorgesteld: ${kand(kid)?.naam}${note?" – "+note:""}`,"Voorstel verstuurd"); });
+}
+function evalForm(s){
+  const k=kand(s.kandidaatId);
+  openModal(`<h2>Evaluatie stage</h2><p class="small muted">${esc(k?.naam||"Stagiair")} bij ${esc(takInfo(s.speltak).naam)}, ${esc(fmtDate(s.datum))}. Kort en eerlijk helpt de explorer het meest.</p>
+    <label class="check"><input type="checkbox" name="aanwezig" checked> <span>De stagiair was aanwezig</span></label>
+    <div class="scale">${EVAL_PUNTEN.map(([key,l])=>`<label for="e-${key}" class="small">${esc(l)}</label><select id="e-${key}" name="s_${key}">${Object.entries(SCHAAL).map(([v,t])=>`<option value="${v}">${t}</option>`).join("")}</select>`).join("")}</div>
+    <div class="field"><label for="e-top">Top: wat ging goed?</label><textarea id="e-top" name="top"></textarea></div>
+    <div class="field"><label for="e-tip">Tip: wat kan beter bij een volgende stage?</label><textarea id="e-tip" name="tip"></textarea></div>
+    <div class="field"><label for="e-stap">Klaar voor de volgende stap?</label><select id="e-stap" name="volgende"><option value="nee">Nog een keer op dit niveau</option><option value="ja">Ja, volgende keer een stap verder</option></select></div>
+    ${footer("Evaluatie opslaan")}`,
+    async fd=>{
+      if(!fd.get("aanwezig")) return updStage(s,{status:"geannuleerd"},"Stagiair was niet aanwezig","Vastgelegd als niet aanwezig");
+      if(!fd.get("top")?.trim()) return "Schrijf minstens één top.";
+      const scores=Object.fromEntries(EVAL_PUNTEN.map(([k])=>[k,fd.get("s_"+k)||""]));
+      return updStage(s,{status:"afgerond", evalBegeleider:{scores, top:fd.get("top").trim(), tip:(fd.get("tip")||"").trim(), volgende:fd.get("volgende"), door:rolNaam(), t:nowStamp()}},"Evaluatie ingevuld","Evaluatie opgeslagen");
+    });
+}
+function reflectForm(s){
+  openModal(`<h2>Mijn reflectie</h2><p class="small muted">${esc(takInfo(s.speltak).naam)}, ${esc(fmtDate(s.datum))}</p>
+    <div class="field"><label for="r-1">Wat ging goed en waar ben je trots op?</label><textarea id="r-1" name="a"></textarea></div>
+    <div class="field"><label for="r-2">Wat was lastig, en wat doe je de volgende keer anders?</label><textarea id="r-2" name="b"></textarea></div>
+    ${footer("Opslaan")}`,
+    async fd=>{ const a=(fd.get("a")||"").trim(), b=(fd.get("b")||"").trim(); if(!a&&!b) return "Schrijf in ieder geval één zin.";
+      return updStage(s,{reflectie:[a,b].filter(Boolean).join(" · ")},"Reflectie toegevoegd","Reflectie opgeslagen"); });
+}
+function msgForm(s){
+  openModal(`<h2>Bericht</h2><p class="small muted">Zichtbaar voor de speltak, Selina en de stagiair.</p><div class="field"><label for="m-t">Bericht</label><textarea id="m-t" name="t"></textarea></div>${footer("Versturen")}`,
+    async fd=>{ const t=(fd.get("t")||"").trim(); if(!t) return "Schrijf een bericht."; return updStage(s,{},t,"Bericht geplaatst"); });
+}
+function reasonForm(s, title, status, logPrefix, okMsg, extra={}){
+  openModal(`<h2>${esc(title)}</h2><div class="field"><label for="x-r">Reden</label><textarea id="x-r" name="r"></textarea></div>${footer(title)}`,
+    async fd=>{ const r=(fd.get("r")||"").trim(); if(!r) return "Geef een korte reden.";
+      return updStage(s,{status, ...extra},`${logPrefix}: ${r}`,okMsg); });
+}
+function kandForm(k){
+  const d=k||{afdeling:"RSA 782", soort:SOORTEN[0], voorkeur:[]};
+  openModal(`<h2>${k?"Gegevens van "+esc(k.naam):"Explorer toevoegen"}</h2>
+    <div class="field"><label for="k-naam">Voornaam</label><input type="text" id="k-naam" name="naam" value="${esc(d.naam||"")}" required></div>
+    <div class="two"><div class="field"><label for="k-afd">Afdeling</label><select id="k-afd" name="afdeling">${AFDELINGEN.map(a=>`<option ${a===d.afdeling?"selected":""}>${a}</option>`).join("")}</select></div>
+    <div class="field"><label for="k-uren">Urendoel</label><input type="number" id="k-uren" name="urenDoel" min="0" value="${esc(d.urenDoel||"")}" placeholder="bijv. 30"></div></div>
+    <div class="field"><label for="k-soort">Soort stage</label><select id="k-soort" name="soort">${SOORTEN.map(s=>`<option ${s===d.soort?"selected":""}>${s}</option>`).join("")}</select></div>
+    <div class="field"><label for="k-doel">Leerdoel</label><textarea id="k-doel" name="leerdoelen" placeholder="Bijv. leren een spel duidelijk uitleggen aan jonge kinderen">${esc(d.leerdoelen||"")}</textarea></div>
+    <div class="field"><span class="lbl">Voorkeur speltakken</span><div class="opts">${SPELTAKKEN.filter(s=>!s.uitz).map(s=>`<label><input type="checkbox" name="voorkeur" value="${s.id}" ${(d.voorkeur||[]).includes(s.id)?"checked":""}> ${esc(s.naam)}</label>`).join("")}</div><span class="hint">Scouts-speltakken alleen bij uitzondering, via Selina.</span></div>
+    ${k?`<label class="check"><input type="checkbox" name="inactief" ${k.actief===false?"checked":""}> <span>Niet meer actief als stagekandidaat</span></label>`:""}
+    ${footer(k?"Opslaan":"Toevoegen")}`,
+    async fd=>{ const naam=(fd.get("naam")||"").trim(); if(!naam) return "Vul een naam in.";
+      const body={naam, afdeling:fd.get("afdeling"), soort:fd.get("soort"), urenDoel:Number(fd.get("urenDoel"))||0, leerdoelen:(fd.get("leerdoelen")||"").trim(), voorkeur:fd.getAll("voorkeur"), actief:!fd.get("inactief")};
+      if(k) return write(()=>api.updKand(k.id,body),"Opgeslagen");
+      let newId=null;
+      const ok = await write(async()=>{ newId=await api.addKand({...body, beschikbaar:[]}); },"Explorer toegevoegd");
+      if(ok && S.rol==="kijker" && newId){ S.rol="explorer:"+newId; store("stagebord.rol",S.rol); }
+      return ok; });
+}
+function availForm(k){
+  openModal(`<h2>Beschikbaar als stagiair</h2><p class="small muted">${esc(k.naam)} – voeg één of meer opkomstdata toe. Speltakken zien deze data en kunnen je claimen.</p>
+    <div class="field"><label for="a-d">Datum</label><input type="date" id="a-d" name="datum" min="${todayISO()}" required></div>
+    <label class="check"><input type="checkbox" name="herhaal"> <span>Ook de drie zaterdagen daarna</span></label>
+    <div class="field"><label for="a-n">Opmerking (optioneel)</label><input type="text" id="a-n" name="notitie" placeholder="Bijv. alleen ochtend"></div>${footer("Toevoegen")}`,
+    async fd=>{ const d=fd.get("datum"); if(!d) return "Kies een datum."; if(d<todayISO()) return "Die datum ligt in het verleden.";
+      const dates=[d]; if(fd.get("herhaal")){ const base=new Date(d+"T12:00:00"); for(let i=1;i<=3;i++){ const x=new Date(base); x.setDate(x.getDate()+7*i); dates.push(x.toISOString().slice(0,10)); } }
+      const cur=(k.beschikbaar||[]).filter(a=>a.datum>=todayISO());
+      const add=dates.filter(x=>!cur.some(a=>a.datum===x)).map(x=>({datum:x, notitie:(fd.get("notitie")||"").trim()}));
+      if(!add.length) return "Deze data stonden er al.";
+      return write(()=>api.updKand(k.id,{beschikbaar:[...cur,...add].sort((a,b)=>a.datum.localeCompare(b.datum))}), add.length>1?`${add.length} data toegevoegd`:"Datum toegevoegd"); });
+}
+
+function pinForm(){
+  openModal(`<h2>Stagecoördinator</h2><p class="small muted">Deze rol is voor Selina. Vul de pincode in.</p><div class="field"><label for="p-pin">Pincode</label><input type="text" inputmode="numeric" id="p-pin" name="pin" autocomplete="off"></div>${footer("Doorgaan")}`,
+    async fd=>{ if((fd.get("pin")||"")!==COORD_PINCODE) return "Onjuiste pincode."; store("stagebord.pin",COORD_PINCODE); S.rol="coord"; store("stagebord.rol","coord"); S.tab="overzicht"; render(); return true; });
+}
+
+/* ---------- Events ---------- */
+document.addEventListener("click", async e=>{
+  const tabBtn=e.target.closest("[data-tab]");
+  if(tabBtn && !e.target.closest(".modal")){ S.tab=tabBtn.dataset.tab; store("stagebord.tab",S.tab); render(); window.scrollTo(0,0); return; }
+  const fb=e.target.closest("[data-filter]"); if(fb){ S.filter=fb.dataset.filter; render(); return; }
+  const a=e.target.closest("[data-act]"); if(!a || e.target.closest(".modal")) return;
+  const act=a.dataset.act, id=a.dataset.id, s=S.stages.find(x=>x.id===id);
+  switch(act){
+    case "newRequest": return newRequest();
+    case "newPlan": return newPlan();
+    case "newKand": return kandForm(null);
+    case "editKand": return kandForm(kand(id));
+    case "addAvail": { const k=kand(id); if(k) availForm(k); else kandForm(null); return; }
+    case "delAvail": { const k=kand(id); if(!k) return; return write(()=>api.updKand(id,{beschikbaar:(k.beschikbaar||[]).filter(x=>x.datum!==a.dataset.date)}),"Datum verwijderd"); }
+    case "claim": return claim(id, a.dataset.date);
+    case "propose": return propose(s);
+    case "confirm": return updStage(s,{status:"bevestigd"},"Bevestigd door coördinator","Stage bevestigd");
+    case "reject": return reasonForm(s,"Afwijzen","afgewezen","Afgewezen","Claim afgewezen");
+    case "accept": return updStage(s,{status:"bevestigd"},"Akkoord van de speltak","Stage bevestigd");
+    case "decline": return reasonForm(s,"Liever niet","gevraagd","Voorstel afgewezen door speltak","Selina zoekt iemand anders",{kandidaatId:""});
+    case "eval": return evalForm(s);
+    case "reflect": return reflectForm(s);
+    case "msg": return msgForm(s);
+    case "cancel": return myExplorer()
+      ? reasonForm(s,"Afmelden","gevraagd","Stagiair meldt zich af","Afgemeld; de speltak zoekt opnieuw",{kandidaatId:""})
+      : reasonForm(s,"Annuleren","geannuleerd","Geannuleerd","Stage geannuleerd");
+  }
+});
+document.addEventListener("change", e=>{
+  if(e.target.id==="rolSelect"){
+    const nieuw=e.target.value;
+    if(nieuw==="coord" && store("stagebord.pin")!==COORD_PINCODE){ e.target.value=S.rol; return pinForm(); }
+    S.rol=nieuw; store("stagebord.rol",S.rol); S.tab="overzicht"; render(); return; }
+  if(e.target.id==="toonOud"){ S.toonOud=e.target.checked; render(); return; }
+  const inp=e.target.closest("[data-tak]");
+  if(inp){ const tk=inp.dataset.tak, f=inp.dataset.field;
+    const takken={...S.instellingen, [tk]:{...(S.instellingen[tk]||{}), [f]:inp.value.trim()}};
+    write(()=>api.setTakken(takken),"Opgeslagen"); }
+});
+
+boot();
+})();
+</script>
+</body>
+</html>
