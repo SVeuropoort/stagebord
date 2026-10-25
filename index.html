@@ -394,6 +394,7 @@ async function laad(){
   S.instellingen=(rij("speltakken")&&rij("speltakken").takken)||{};
   S.alg={coordNaam:"Selina", ...((rij("algemeen")&&rij("algemeen").takken)||{})};
   zetTakken(S.alg.lijst);
+  if(S.rol.startsWith("explorer:")||S.rol.startsWith("vrijw:")){ S.rol="kijker"; store("stagebord.rol","kijker"); }
   if(S.rol==="coord" && sess("stagebord.pin")!==PIN()){ S.rol="kijker"; store("stagebord.rol","kijker"); }
   if(S.rol==="coordU" && sess("stagebord.pinU")!==PIN_U()){ S.rol="kijker"; store("stagebord.rol","kijker"); }
   S.ready=true; $("#status").hidden=true; render();
@@ -466,8 +467,7 @@ function renderRole(){
   const sel=$("#rolSelect");
   const opts = [`<optgroup label="Coördinatoren"><option value="coord">Stagecoördinator – ${esc(C())}</option><option value="coordU">Uitzendbureau – ${esc(CU())}</option></optgroup>`,
     `<optgroup label="Teamleider van speltak">${ACTIEF.map(s=>`<option value="speltak:${s.id}">${esc(s.naam)}</option>`).join("")}</optgroup>`,
-    S.kandidaten.length?`<optgroup label="Explorer (stage)">${S.kandidaten.map(k=>`<option value="explorer:${esc(k.id)}">${esc(k.naam)}</option>`).join("")}</optgroup>`:"",
-    S.vrijw.length?`<optgroup label="Vrijwilliger (uitzendbureau)">${S.vrijw.map(k=>`<option value="vrijw:${esc(k.id)}">${esc(k.naam)}</option>`).join("")}</optgroup>`:"",
+
     `<option value="kijker">Alleen meekijken</option>`].join("");
   if(sel.dataset.sig!==opts){ sel.innerHTML=opts; sel.dataset.sig=opts; }
   if([...sel.options].some(o=>o.value===S.rol)) sel.value=S.rol;
@@ -522,7 +522,7 @@ function stageActions(s){
     if(s.status==="voorgesteld") b.push(B("accept","Akkoord","primary"), B("decline","Liever niet"));
     if(s.status==="bevestigd" && s.datum<=t && !s.evalBegeleider) b.push(B("eval","Evaluatie invullen","primary"));
   }
-  if(ex && s.kandidaatId===ex && s.datum<=t && ["bevestigd","afgerond"].includes(s.status) && !s.reflectie) b.push(B("reflect","Mijn reflectie","primary"));
+  if(((ex && s.kandidaatId===ex)||(isCoord()&&s.kandidaatId)) && s.datum<=t && ["bevestigd","afgerond"].includes(s.status) && !s.reflectie) b.push(B("reflect",isCoord()?"Reflectie explorer invullen":"Mijn reflectie",isCoord()?"":"primary"));
   if(isCoord()) b.push(B("delStage","Verwijderen","ghost danger"));
   if(actief && (isCoord() || (tk&&s.speltak===tk) || (ex&&s.kandidaatId===ex))){
     b.push(B("msg","Bericht"));
@@ -556,7 +556,7 @@ function viewOverzicht(){
     <div class="section-head"><h2>${esc(kop)}</h2><span class="muted small">Je kijkt als ${esc(rolNaam())}</span></div>
     ${cta}
     <p class="small muted">${counts.open} speltak-aanvragen open · ${counts.wacht} wachten op akkoord · ${counts.bev} bevestigd en gepland · ${counts.beschikbaar} vrije beschikbare data van explorers</p>
-    ${S.rol==="kijker" ? `<div class="notice">Kies bovenaan wie je bent. Teamleiders vragen stagiairs aan en claimen explorers, ${esc(C())} koppelt en bevestigt, explorers geven hun data op.</div>`
+    ${S.rol==="kijker" ? `<div class="notice">Kies bovenaan wie je bent. Teamleiders vragen stagiairs aan en claimen explorers; ${esc(C())} beheert de explorers, koppelt en bevestigt.</div>`
       : items.length ? `<div class="stack">${items.sort((a,b)=>(a.datum||"").localeCompare(b.datum||"")).map(s=>stageCard(s)).join("")}</div>`
       : `<div class="empty">Er wacht niets op je. ${mySpeltak()?"Vraag een stagiair aan of claim een explorer die beschikbaar is.":isCoord()?"Nieuwe aanvragen en claims verschijnen hier vanzelf.":"Geef je beschikbare zaterdagen op, dan kunnen speltakken je vragen."}</div>`}
   </section>
@@ -643,7 +643,7 @@ function explorerCard(k, self=false){
         return `<span class="chip" title="${esc(a.notitie||"")}">${esc(fmtDate(a.datum))}${b?" · ingepland":""}${canEdit&&!b?`<button aria-label="Datum verwijderen" data-act="delAvail" data-id="${esc(k.id)}" data-date="${esc(a.datum)}">✕</button>`:""}</span>`; }).join("")}</div>`
         :`<p class="small muted">Geen data opgegeven.</p>`}
     </div>
-    ${canEdit?`<div class="row"><button class="btn sm primary" data-act="addAvail" data-id="${esc(k.id)}">Data toevoegen</button>${isCoord()?`<button class="btn sm" data-act="editKand" data-id="${esc(k.id)}">Gegevens</button>`:""}${isCoord()?`<button class="btn sm ghost danger" data-act="delKand" data-id="${esc(k.id)}">Verwijderen</button>`:""}</div>`:""}
+    ${canEdit?`<div class="row"><button class="btn sm primary" data-act="addAvail" data-id="${esc(k.id)}">Data toevoegen</button>${isCoord()?`<button class="btn sm" data-act="editKand" data-id="${esc(k.id)}">Gegevens</button>`:""}${isCoord()?`<button class="btn sm ghost danger" data-act="delKand" data-id="${esc(k.id)}">Volledig verwijderen</button>`:""}</div>`:""}
   </div>`;
 }
 function viewExplorers(){
@@ -651,7 +651,8 @@ function viewExplorers(){
   const groups = AFDELINGEN.map(a=>[a, S.kandidaten.filter(k=>k.afdeling===a && k.actief!==false)]);
   return `<section class="section">
     <div class="section-head"><h2>Stagekandidaten</h2>${(isCoord()&&S.db)?`<button class="btn primary sm" data-act="newKand">Explorer toevoegen</button>`:""}</div>
-    <p class="small muted" style="max-width:68ch">Explorers geven hier zelf hun beschikbare opkomstdata op. Teamleiders kunnen een vrije datum claimen; ${esc(C())} bevestigt daarna.</p>
+    <p class="small muted" style="max-width:68ch">De stagecoördinator zet hier de beschikbare opkomstdata van explorers. Teamleiders kunnen een vrije datum claimen; ${esc(C())} bevestigt daarna.</p>
+    ${isCoord()&&S.kandidaten.some(k=>k.actief===false)?`<details class="stack"><summary class="small"><b>Niet meer actief (${S.kandidaten.filter(k=>k.actief===false).length})</b></summary><div class="grid2" style="margin-top:10px">${S.kandidaten.filter(k=>k.actief===false).map(k=>explorerCard(k)).join("")}</div></details>`:""}
     ${S.kandidaten.length?groups.map(([a,ks])=>`<div class="stack"><div class="row" style="gap:10px">${afdLogo(a,40)}<h3>${esc(a)} <span class="muted small">(${ks.length})</span></h3></div>${ks.length?`<div class="grid2">${ks.map(k=>explorerCard(k)).join("")}</div>`:`<p class="small muted">Nog niemand van ${esc(a)}.</p>`}</div>`).join("")
       :`<div class="empty">Nog geen explorers aangemeld. De stagecoördinator voegt stagekandidaten toe.</div>`}
   </section>`;
@@ -1063,7 +1064,7 @@ function uOverzicht(){
   return `<div class="hero-band"><div class="logos">${`<img class="alogo" src="${LOGO.groep}" alt="" style="height:48px">`}</div><p class="small">Komt een leidingteam iemand tekort? Het HVS Uitzendbureau heeft een poule vrijwilligers die kunnen bijspringen bij alle speltakken, van Bevers tot de Wilde Vaart.</p></div>
   <section class="section"><div class="section-head"><h2>${esc(kop)}</h2><span class="muted small">Je kijkt als ${esc(rolNaam())}</span></div>${cta}
     <p class="small muted">${open} open aanvragen · ${wacht} wachten op akkoord · ${bev} bevestigd · ${vrij} vrije data van vrijwilligers</p>
-    ${S.rol==="kijker"?`<div class="notice">Kies bovenaan wie je bent. Teamleiders vragen een vrijwilliger aan, ${esc(CU())} plaatst iemand uit de poule en vrijwilligers geven hun beschikbare data op.</div>`
+    ${S.rol==="kijker"?`<div class="notice">Kies bovenaan wie je bent. Teamleiders vragen een vrijwilliger aan; ${esc(CU())} beheert de poule en plaatst iemand.</div>`
       :items.length?`<div class="stack">${items.sort((a,b)=>(a.datum||"").localeCompare(b.datum||"")).map(uCard).join("")}</div>`
       :(isCoordU()||tk||v)?`<div class="empty">Er wacht niets op je.</div>`:""}
   </section>${eigen}
@@ -1102,14 +1103,15 @@ function vrijwCard(k){
         if(tk&&!b&&S.db) return `<button class="chip claim" data-act="uClaim" data-id="${esc(k.id)}" data-date="${esc(a.datum)}">${esc(fmtDate(a.datum))} · aanvragen</button>`;
         return `<span class="chip">${esc(fmtDate(a.datum))}${b?" · ingepland":""}${canEdit&&!b?`<button aria-label="Datum verwijderen" data-act="uDelAvail" data-id="${esc(k.id)}" data-date="${esc(a.datum)}">✕</button>`:""}</span>`; }).join("")}</div>`:`<p class="small muted">Geen data opgegeven.</p>`}
     </div>
-    ${canEdit?`<div class="row"><button class="btn sm primary" data-act="uAddAvail" data-id="${esc(k.id)}">Data toevoegen</button>${isCoordU()?`<button class="btn sm" data-act="uEditV" data-id="${esc(k.id)}">Gegevens</button>`:""}${isCoordU()?`<button class="btn sm ghost danger" data-act="uDelV" data-id="${esc(k.id)}">Verwijderen</button>`:""}</div>`:""}
+    ${canEdit?`<div class="row"><button class="btn sm primary" data-act="uAddAvail" data-id="${esc(k.id)}">Data toevoegen</button>${isCoordU()?`<button class="btn sm" data-act="uEditV" data-id="${esc(k.id)}">Gegevens</button>`:""}${isCoordU()?`<button class="btn sm ghost danger" data-act="uDelV" data-id="${esc(k.id)}">Volledig verwijderen</button>`:""}</div>`:""}
   </div>`;
 }
 function uPoule(){
   if(!S.ready) return `<div class="empty">Laden…</div>`;
   const ks=S.vrijw.filter(k=>k.actief!==false);
   return `<section class="section"><div class="section-head"><h2>Vrijwilligerspoule</h2>${(isCoordU()&&S.db)?`<button class="btn primary sm" data-act="uNewV">Vrijwilliger toevoegen</button>`:""}</div>
-    <p class="small muted" style="max-width:68ch">Vrijwilligers geven zelf hun beschikbare data op. Een teamleider kan een vrije datum aanvragen; ${esc(CU())} bevestigt.</p>
+    <p class="small muted" style="max-width:68ch">De coördinator zet hier de beschikbare data van vrijwilligers. Een teamleider kan een vrije datum aanvragen; ${esc(CU())} bevestigt.</p>
+    ${isCoordU()&&S.vrijw.some(k=>k.actief===false)?`<details><summary class="small"><b>Niet meer actief (${S.vrijw.filter(k=>k.actief===false).length})</b></summary><div class="grid2" style="margin-top:10px">${S.vrijw.filter(k=>k.actief===false).map(vrijwCard).join("")}</div></details>`:""}
     ${ks.length?`<div class="grid2">${ks.map(vrijwCard).join("")}</div>`:`<div class="empty">Nog geen vrijwilligers in de poule. De coördinator van het uitzendbureau voegt vrijwilligers toe.</div>`}</section>`;
 }
 function uUitleg(){
@@ -1224,7 +1226,7 @@ function uitzendClick(act,id,a){
     case "uNew": return uNew();
     case "uNewV": if(!isCoordU()) return toast("Alleen de coördinator van het uitzendbureau kan vrijwilligers toevoegen."); return vrijwForm(null);
     case "uEditV": if(!isCoordU()) return toast("Alleen de coördinator van het uitzendbureau kan gegevens wijzigen."); return vrijwForm(vr(id));
-    case "uDelV": if(!zeker(a)) return true; return write(()=>api.delKand(id),"Vrijwilliger verwijderd");
+    case "uDelV": return verwijderPersoon(vr(id));
     case "uAddAvail": { const k=vr(id); if(k) availForm(k); return true; }
     case "uDelAvail": { const k=vr(id); if(!k) return true; return write(()=>api.updKand(id,{beschikbaar:(k.beschikbaar||[]).filter(x=>x.datum!==a.dataset.date)}),"Datum verwijderd"); }
     case "uClaim": return uClaim(id,a.dataset.date);
@@ -1242,6 +1244,33 @@ function uitzendClick(act,id,a){
   return null;
 }
 
+function verwijderPersoon(k){
+  if(!k) return;
+  const vrijw=k.type==="vrijwilliger", t=todayISO();
+  if(vrijw?!isCoordU():!isCoord()) return toast("Alleen de coördinator kan deelnemers verwijderen.");
+  const gekoppeld=S.allS.filter(s=>s.kandidaatId===k.id);
+  const lopend=gekoppeld.filter(s=>!["afgerond","geannuleerd","afgewezen"].includes(s.status) && s.datum>=t);
+  const weg=gekoppeld.filter(s=>!lopend.includes(s));
+  const woord=vrijw?"inzetten":"stages";
+  openModal(`<h2>${esc(k.naam)} volledig verwijderen</h2>
+    <div class="notice warn small">Dit verwijdert alle gegevens van ${esc(k.naam)}: naam, beschikbaarheid${vrijw?", kwalificaties":", leerdoel en uren"}${weg.length?` en ${weg.length} oude of afgeronde ${woord}`:""}. Dit kan niet ongedaan worden gemaakt.</div>
+    ${lopend.length?`<p class="small">${lopend.length} geplande ${woord} gaan terug naar de speltak als open aanvraag, zonder naam.</p>`:""}
+    <label class="check"><input type="checkbox" name="zeker"> <span>Ja, verwijder ${esc(k.naam)} volledig</span></label>
+    ${footer("Volledig verwijderen")}`,
+    async fd=>{
+      if(!fd.get("zeker")) return "Vink aan dat je het zeker weet.";
+      return write(async()=>{
+        for(const s of lopend){
+          const log=(s.log||[]).filter(l=>!String(l.tekst||"").includes(k.naam)&&!String(l.wie||"").includes(k.naam));
+          log.push({t:nowStamp(), wie:rolNaam(), tekst:"Deelnemer verwijderd; er wordt opnieuw iemand gezocht"});
+          await api.updStage(s.id,{status:"gevraagd", kandidaatId:"", log, reflectie:null});
+        }
+        await api.delStages(weg.map(s=>s.id));
+        await api.delKand(k.id);
+        if(S.rol==="explorer:"+k.id || S.rol==="vrijw:"+k.id){ S.rol="kijker"; store("stagebord.rol","kijker"); }
+      }, `${k.naam} is volledig verwijderd`);
+    });
+}
 /* ---------- Events ---------- */
 document.addEventListener("click", async e=>{
   const tabBtn=e.target.closest("[data-tab]");
@@ -1255,7 +1284,7 @@ document.addEventListener("click", async e=>{
   switch(act){
     case "settings": return openSettings();
     case "delStage": if(!zeker(a)) return; return write(()=>api.delStage(id),"Stage verwijderd");
-    case "delKand": if(!zeker(a)) return; return write(()=>api.delKand(id),"Explorer verwijderd");
+    case "delKand": return verwijderPersoon(kand(id));
     case "newRequest": return newRequest();
     case "newPlan": return newPlan();
     case "newKand": if(!isCoord()) return toast("Alleen de stagecoördinator kan explorers toevoegen."); return kandForm(null);
